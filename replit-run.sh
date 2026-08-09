@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Replit free run script — builds frontend once, serves FastAPI + SPA
+# Replit free run — install deps, build SPA once, serve FastAPI + static
 set -euo pipefail
 cd "$(dirname "$0")"
 
@@ -19,12 +19,24 @@ export DATABASE_URL="${DATABASE_URL:-sqlite:///./data/app.db}"
 export UPLOAD_DIR="${UPLOAD_DIR:-./data/uploads}"
 export RESULT_DIR="${RESULT_DIR:-./data/results}"
 
-if [ ! -d backend/.venv ]; then
-  python3 -m venv backend/.venv
+# Replit sets PIP_USER=1 which breaks both plain pip and venvs
+export PIP_USER=0
+export PYTHONNOUSERSITE=1
+unset PYTHONUSERBASE || true
+
+# Prefer Replit system Python (no nested venv) when REPL_ID is set
+if [ -n "${REPL_ID:-}" ] || [ -n "${REPL_SLUG:-}" ] || [ -n "${REPLIT_ENVIRONMENT:-}" ]; then
+  python3 -m pip install --disable-pip-version-check -q -r backend/requirements.txt
+  PY=(python3 -m)
+else
+  if [ ! -d backend/.venv ]; then
+    python3 -m venv backend/.venv
+  fi
+  # shellcheck disable=SC1091
+  source backend/.venv/bin/activate
+  python -m pip install --disable-pip-version-check -q -r backend/requirements.txt
+  PY=(python -m)
 fi
-# shellcheck disable=SC1091
-source backend/.venv/bin/activate
-pip install -q -r backend/requirements.txt
 
 if [ ! -d backend/static/assets ]; then
   (cd frontend && npm install && npm run build)
@@ -34,4 +46,4 @@ fi
 
 mkdir -p backend/data/uploads backend/data/results
 cd backend
-exec uvicorn main:app --host 0.0.0.0 --port "${PORT:-8000}"
+exec "${PY[@]}" uvicorn main:app --host 0.0.0.0 --port "${PORT:-8000}"
