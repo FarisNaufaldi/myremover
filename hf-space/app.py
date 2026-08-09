@@ -155,9 +155,11 @@ with gr.Blocks(title="MyRemover API") as demo:
 
 
 if __name__ == "__main__":
-    # HF Spaces sets env; local default 7860
+    # HF Spaces injects PORT; Gradio 5 launches without explicit port if unset.
+    port = int(os.getenv("PORT", "7860"))
     demo.queue(default_concurrency_limit=1).launch(
         server_name="0.0.0.0",
-        server_port=int(os.getenv("PORT", "7860")),
+        server_port=port,
         show_error=True,
+        ssr_mode=False,
     )
