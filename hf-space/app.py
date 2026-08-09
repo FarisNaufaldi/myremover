@@ -1,6 +1,10 @@
 """
-MyRemover — free Hugging Face Gradio Space backend.
-API returns plain strings (JSON text) to avoid Gradio 5 api_info bugs with dict schemas.
+MyRemover — HF Gradio backend (string-only API — avoids Gradio 5 schema crashes).
+Endpoints:
+  login(username, password) -> JSON string
+  session(token) -> JSON string
+  logout(token) -> JSON string
+  remove_bg(image_b64, token) -> PNG base64 string (no data: prefix)
 """
 
 from __future__ import annotations
@@ -14,6 +18,10 @@ import os
 import time
 from functools import lru_cache
 
+# Must be set BEFORE importing gradio
+os.environ["GRADIO_SSR_MODE"] = "false"
+os.environ["GRADIO_ANALYTICS_ENABLED"] = "false"
+
 import gradio as gr
 from PIL import Image
 from rembg import new_session, remove
@@ -24,9 +32,6 @@ SESSION_SECRET = os.getenv("SESSION_SECRET") or "hf-free-change-me-please-32char
 TOKEN_TTL = int(os.getenv("TOKEN_TTL_SECONDS") or "86400")
 REMBG_MODEL = os.getenv("REMBG_MODEL") or "u2netp"
 MAX_SIDE = int(os.getenv("MAX_IMAGE_SIDE") or "2048")
-
-# Disable Gradio 5 SSR on Spaces (avoids Node path + crashes for API clients)
-os.environ["GRADIO_SSR_MODE"] = "false"
 
 
 def _sign(payload: str) -> str:
@@ -64,6 +69,33 @@ def get_session():
     return new_session(REMBG_MODEL)
 
 
+def _decode_image_b64(image_b64: str) -> Image.Image:
+    if not image_b64 or not isinstance(image_b64, str):
+        raise gr.Error("Please upload an image.")
+    raw = image_b64.strip()
+    if raw.startswith("data:"):
+        raw = raw.split(",", 1)[1]
+    # strip whitespace/newlines
+    raw = "".join(raw.split())
+    try:
+        data = base64.b64decode(raw, validate=False)
+    except Exception as exc:
+        raise gr.Error("Invalid image data.") from exc
+    return Image.open(io.BytesIO(data)).convert("RGBA")
+
+
+def _prepare_image(img: Image.Image) -> Image.Image:
+    w, h = img.size
+    longest = max(w, h)
+    if longest > MAX_SIDE:
+        scale = MAX_SIDE / float(longest)
+        img = img.resize(
+            (max(1, int(w * scale)), max(1, int(h * scale))),
+            Image.Resampling.LANCZOS,
+        )
+    return img
+
+
 def login_fn(username: str, password: str) -> str:
     u = (username or "").strip().lower()
     p = password or ""
@@ -96,97 +128,62 @@ def logout_fn(_token: str) -> str:
     return json.dumps({"logged_out": True})
 
 
-def _prepare_image(image: Image.Image) -> Image.Image:
-    img = image.convert("RGBA")
-    w, h = img.size
-    longest = max(w, h)
-    if longest > MAX_SIDE:
-        scale = MAX_SIDE / float(longest)
-        img = img.resize(
-            (max(1, int(w * scale)), max(1, int(h * scale))),
-            Image.Resampling.LANCZOS,
-        )
-    return img
-
-
-def _to_pil(image) -> Image.Image:
-    if image is None:
-        raise gr.Error("Please upload an image.")
-    if isinstance(image, Image.Image):
-        return image
-    if isinstance(image, dict):
-        src = image.get("url") or image.get("path") or ""
-        if isinstance(src, str) and src.startswith("data:"):
-            _header, b64 = src.split(",", 1)
-            raw = base64.b64decode(b64)
-            return Image.open(io.BytesIO(raw))
-        if isinstance(src, str) and src:
-            import urllib.request
-
-            with urllib.request.urlopen(src) as resp:  # nosec B310
-                return Image.open(io.BytesIO(resp.read()))
-        raise gr.Error("Could not read uploaded image.")
-    if isinstance(image, (bytes, bytearray)):
-        return Image.open(io.BytesIO(image))
-    raise gr.Error("Unsupported image type.")
-
-
-def remove_bg_fn(image, token: str):
+def remove_bg_fn(image_b64: str, token: str) -> str:
+    """Return raw base64 PNG (no data: prefix)."""
     verify_token(token)
-    img = _prepare_image(_to_pil(image))
+    img = _prepare_image(_decode_image_b64(image_b64))
     session = get_session()
     out = remove(img, session=session)
     if not isinstance(out, Image.Image):
         out = Image.open(io.BytesIO(out)).convert("RGBA")
     else:
         out = out.convert("RGBA")
-    return out
+    buf = io.BytesIO()
+    out.save(buf, format="PNG", optimize=False)
+    return base64.b64encode(buf.getvalue()).decode("ascii")
 
 
+# Text-only components → stable /info and /api schemas on Gradio 5
 with gr.Blocks(title="MyRemover API") as demo:
     gr.Markdown(
-        "# MyRemover (HF free backend)\n"
-        "Backend for the Vercel frontend. Use the website UI — or test below."
+        "# MyRemover API (HF)\n"
+        "Use **Vercel frontend**. Demo fields below are for API testing only."
     )
-    with gr.Tab("Demo"):
-        token_box = gr.Textbox(label="Session token (from login)", type="password")
-        with gr.Row():
-            inp = gr.Image(type="pil", label="Input")
-            out = gr.Image(type="pil", label="Output (transparent PNG)")
-        btn = gr.Button("Remove background", variant="primary")
-        btn.click(
-            remove_bg_fn,
-            inputs=[inp, token_box],
-            outputs=[out],
-            api_name="remove_bg",
+    with gr.Tab("Login"):
+        user_in = gr.Textbox(label="username")
+        pass_in = gr.Textbox(label="password", type="password")
+        login_out = gr.Textbox(label="result")
+        gr.Button("login").click(
+            login_fn, [user_in, pass_in], [login_out], api_name="login"
+        )
+    with gr.Tab("Session"):
+        tok = gr.Textbox(label="token")
+        sess_out = gr.Textbox(label="result")
+        gr.Button("session").click(
+            session_fn, [tok], [sess_out], api_name="session"
+        )
+        gr.Button("logout").click(
+            logout_fn, [tok], [sess_out], api_name="logout"
+        )
+    with gr.Tab("Remove BG"):
+        img_b64 = gr.Textbox(
+            label="image base64 (raw or data-url)",
+            lines=3,
+            max_lines=5,
+        )
+        tok2 = gr.Textbox(label="token", type="password")
+        out_b64 = gr.Textbox(label="png base64 result", lines=3)
+        gr.Button("remove_bg").click(
+            remove_bg_fn, [img_b64, tok2], [out_b64], api_name="remove_bg"
         )
 
-    with gr.Tab("Auth (API)"):
-        u = gr.Textbox(label="Username")
-        p = gr.Textbox(label="Password", type="password")
-        login_out = gr.Textbox(label="Login result (JSON text)")
-        gr.Button("Login").click(
-            login_fn, inputs=[u, p], outputs=[login_out], api_name="login"
-        )
-
-        t = gr.Textbox(label="Token")
-        sess_out = gr.Textbox(label="Session / logout (JSON text)")
-        gr.Button("Session").click(
-            session_fn, inputs=[t], outputs=[sess_out], api_name="session"
-        )
-        gr.Button("Logout").click(
-            logout_fn, inputs=[t], outputs=[sess_out], api_name="logout"
-        )
-
-
-# Queue once; HF Spaces auto-launches `demo` if present.
 demo.queue(default_concurrency_limit=1)
 
 if __name__ == "__main__":
-    port = int(os.getenv("PORT", "7860"))
     demo.launch(
         server_name="0.0.0.0",
-        server_port=port,
+        server_port=int(os.getenv("PORT", "7860")),
         show_error=True,
         ssr_mode=False,
+        show_api=True,
     )
