@@ -169,17 +169,29 @@ with gr.Blocks(title="MyRemover API") as demo:
         user_in = gr.Textbox(label="username")
         pass_in = gr.Textbox(label="password", type="password")
         login_out = gr.Textbox(label="result")
-        gr.Button("login").click(
-            login_fn, [user_in, pass_in], [login_out], api_name="login"
+        login_btn = gr.Button(value="Login", variant="primary")
+        login_btn.click(
+            fn=login_fn,
+            inputs=[user_in, pass_in],
+            outputs=[login_out],
+            api_name="login",
         )
     with gr.Tab("Session"):
         tok = gr.Textbox(label="token")
         sess_out = gr.Textbox(label="result")
-        gr.Button("session").click(
-            session_fn, [tok], [sess_out], api_name="session"
+        session_btn = gr.Button(value="Session")
+        logout_btn = gr.Button(value="Logout")
+        session_btn.click(
+            fn=session_fn,
+            inputs=[tok],
+            outputs=[sess_out],
+            api_name="session",
         )
-        gr.Button("logout").click(
-            logout_fn, [tok], [sess_out], api_name="logout"
+        logout_btn.click(
+            fn=logout_fn,
+            inputs=[tok],
+            outputs=[sess_out],
+            api_name="logout",
         )
     with gr.Tab("Remove BG"):
         img_b64 = gr.Textbox(
@@ -189,8 +201,12 @@ with gr.Blocks(title="MyRemover API") as demo:
         )
         tok2 = gr.Textbox(label="token", type="password")
         out_b64 = gr.Textbox(label="png base64 result", lines=3)
-        gr.Button("remove_bg").click(
-            remove_bg_fn, [img_b64, tok2], [out_b64], api_name="remove_bg"
+        remove_btn = gr.Button(value="Remove background", variant="primary")
+        remove_btn.click(
+            fn=remove_bg_fn,
+            inputs=[img_b64, tok2],
+            outputs=[out_b64],
+            api_name="remove_bg",
         )
 
 demo.queue(default_concurrency_limit=1)
