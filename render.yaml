@@ -1,0 +1,40 @@
+# Free hosting: render.com Free Web Service
+# Connect this repo in Render dashboard → Blueprint, or create Web Service from Dockerfile.
+
+services:
+  - type: web
+    name: myremover
+    runtime: docker
+    plan: free
+    region: oregon
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    healthCheckPath: /api/ping
+    # Free instances spin down after ~15 min idle — first request may be slow
+    envVars:
+      - key: ENVIRONMENT
+        value: production
+      - key: COOKIE_SECURE
+        value: "true"
+      - key: COOKIE_SAMESITE
+        value: lax
+      - key: REMBG_MODEL
+        value: u2netp
+      - key: ALPHA_MATTING
+        value: "false"
+      - key: INFERENCE_DEVICE
+        value: cpu
+      - key: MAX_UPLOAD_MB
+        value: "10"
+      - key: SKIP_MODEL_LOAD
+        value: "1"
+      - key: SESSION_SECRET
+        generateValue: true
+      - key: ADMIN_USERNAME
+        value: admin
+      - key: ADMIN_PASSWORD
+        value: MyRemoverChangeMe123
+      - key: ADMIN_NAME
+        value: Admin
+      - key: PYTHON_VERSION
+        value: "3.11.0"

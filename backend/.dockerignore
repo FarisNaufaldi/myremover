@@ -1,0 +1,13 @@
+.venv
+__pycache__
+*.pyc
+.env
+.env.local
+data/*.db
+data/uploads/*
+data/results/*
+!data/uploads/.gitkeep
+!data/results/.gitkeep
+*.onnx
+.pytest_cache
+.DS_Store
