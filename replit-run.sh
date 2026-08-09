@@ -18,7 +18,7 @@ export ADMIN_NAME="${ADMIN_NAME:-Admin}"
 # Replit Agent often injects Postgres DATABASE_URL; free run uses local SQLite.
 # Set ALLOW_EXTERNAL_DATABASE=1 to keep whatever DATABASE_URL is already set.
 if [ "${ALLOW_EXTERNAL_DATABASE:-0}" != "1" ]; then
-  export DATABASE_URL="sqlite:////${PWD}/backend/data/app.db"
+  export DATABASE_URL="sqlite:///${PWD}/backend/data/app.db"
 fi
 export UPLOAD_DIR="${UPLOAD_DIR:-${PWD}/backend/data/uploads}"
 export RESULT_DIR="${RESULT_DIR:-${PWD}/backend/data/results}"
