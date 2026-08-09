@@ -1,6 +1,7 @@
 // API client. Dev proxy: /api → localhost:8000 (vite.config.js)
 
-const API_BASE = import.meta.env.VITE_API_BASE ?? "/api";
+// Empty VITE_API_BASE in .env.production must still default to same-origin /api
+const API_BASE = (import.meta.env.VITE_API_BASE || "/api").replace(/\/$/, "");
 
 function extractError(body, status) {
   if (!body) return `HTTP ${status}`;
