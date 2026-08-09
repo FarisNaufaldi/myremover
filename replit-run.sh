@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Replit free run — install deps, build SPA once, serve FastAPI + static
+# Replit free run — venv (writable) + build SPA once + uvicorn
 set -euo pipefail
 cd "$(dirname "$0")"
 
@@ -19,24 +19,23 @@ export DATABASE_URL="${DATABASE_URL:-sqlite:///./data/app.db}"
 export UPLOAD_DIR="${UPLOAD_DIR:-./data/uploads}"
 export RESULT_DIR="${RESULT_DIR:-./data/results}"
 
-# Replit sets PIP_USER=1 which breaks both plain pip and venvs
+# Replit: system site-packages is Nix (read-only). Use a project venv only.
+# Replit also sets PIP_USER=1 which breaks venvs — force it off.
 export PIP_USER=0
 export PYTHONNOUSERSITE=1
 unset PYTHONUSERBASE || true
+export PIP_CONFIG_FILE=/dev/null
 
-# Prefer Replit system Python (no nested venv) when REPL_ID is set
-if [ -n "${REPL_ID:-}" ] || [ -n "${REPL_SLUG:-}" ] || [ -n "${REPLIT_ENVIRONMENT:-}" ]; then
-  python3 -m pip install --disable-pip-version-check -q -r backend/requirements.txt
-  PY=(python3 -m)
-else
-  if [ ! -d backend/.venv ]; then
-    python3 -m venv backend/.venv
-  fi
-  # shellcheck disable=SC1091
-  source backend/.venv/bin/activate
-  python -m pip install --disable-pip-version-check -q -r backend/requirements.txt
-  PY=(python -m)
+VENV_DIR="${PWD}/.venv"
+if [ ! -x "${VENV_DIR}/bin/python" ]; then
+  rm -rf "${VENV_DIR}"
+  python3 -m venv "${VENV_DIR}"
 fi
+# shellcheck disable=SC1091
+source "${VENV_DIR}/bin/activate"
+
+python -m pip install --disable-pip-version-check -q --upgrade pip setuptools wheel
+python -m pip install --disable-pip-version-check -q -r backend/requirements.txt
 
 if [ ! -d backend/static/assets ]; then
   (cd frontend && npm install && npm run build)
@@ -46,4 +45,4 @@ fi
 
 mkdir -p backend/data/uploads backend/data/results
 cd backend
-exec "${PY[@]}" uvicorn main:app --host 0.0.0.0 --port "${PORT:-8000}"
+exec python -m uvicorn main:app --host 0.0.0.0 --port "${PORT:-8000}"
