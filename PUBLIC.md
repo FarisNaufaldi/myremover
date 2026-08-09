@@ -1,61 +1,85 @@
-# 🌐 Deploy MyRemover (FREE, public)
+# 🌐 Publikkan MyRemover — GRATIS
 
-## Sudah siap di GitHub
-
-**Repo publik:** https://github.com/FarisNaufaldi/myremover
+Repo: https://github.com/FarisNaufaldi/myremover
 
 ---
 
-## 1 langkah ke Render (gratis)
+## Apa yang terjadi di Render?
 
-### Klik link ini (login GitHub di Render jika diminta):
+Bukan "bayar langganan". Render menampilkan **Payment Information Required** supaya:
 
-### 👉 [Deploy ke Render Free](https://render.com/deploy?repo=https://github.com/FarisNaufaldi/myremover)
+1. Ada **kartu di akun** (anti-abuse), dan  
+2. Autorisasi sementara **$1** (lalu dilepas) — **tidak memotong biaya** jika plan Free.
 
-Atau manual:
+Banyak “hosting gratis” 2025–2026 begini (Render, Fly, Railway).  
+Kalau **tidak mau isi kartu sama sekali**, pakai opsi **B (Replit)** di bawah.
 
-1. Buka https://dashboard.render.com  
-2. **New +** → **Blueprint**  
-3. Connect repo **FarisNaufaldi/myremover**  
-4. Apply `render.yaml`  
-5. Pastikan `ADMIN_PASSWORD` = `MyRemoverChangeMe123` (atau ganti di Environment)  
-6. **Apply** / Create
-
-Build pertama: **10–20 menit**.
+Blueprint juga diganti dari **Docker → Python free** (lebih cocok free tier).
 
 ---
 
-## Setelah live
+## Opsi A — Render Free (isi kartu, $0 / bulan)
 
-URL akan mirip:
+1. Push latest (repo sudah ada).  
+2. **New + → Web Service** (lebih baik daripada Blueprint jika error berlanjut):
+   - Repo: `FarisNaufaldi/myremover`
+   - **Runtime: Python 3**
+   - **Instance type: Free**
+   - **Build command:**
 
-```text
-https://myremover-xxxx.onrender.com
+```bash
+pip install -r backend/requirements.txt && cd frontend && npm install && npm run build && mkdir -p ../backend/static && cp -r dist/* ../backend/static/
 ```
 
-### Login admin (default)
+   - **Start command:**
+
+```bash
+cd backend && uvicorn main:app --host 0.0.0.0 --port $PORT
+```
+
+   - Health check: `/api/ping`  
+3. Environment (sama seperti `render.yaml`):  
+   `ADMIN_USERNAME=admin`, `ADMIN_PASSWORD=MyRemoverChangeMe123`, `REMBG_MODEL=u2netp`, dll.  
+4. Deploy.
+
+Jika tetap diminta kartu: itu kebijakan Render. Pilih **isi kartunya** (tetap Free) atau opsi B.
+
+---
+
+## Opsi B — Replit Free (biasanya **tanpa** kartu)
+
+1. Buka https://replit.com → login GitHub  
+2. **Create Repl** → **Import from GitHub** → `FarisNaufaldi/myremover`  
+3. Run (tombol Run) — script `replit-run.sh` yang jalan  
+4. **Deploy** / Webview → dapat URL publik  
+5. Login: `admin` / `MyRemoverChangeMe123`
+
+File terkait: `.replit`, `replit-run.sh`
+
+---
+
+## Opsi C — Vercel (frontend) saja
+
+Vercel gratis bagus untuk frontend, **tapi AI rembg butuh server Python** (tidak muat di serverless).  
+Jadi backend tetap di Render/Replit; Vercel opsional.
+
+---
+
+## Login setelah live
 
 | | |
 |--|--|
-| Username | `admin` |
-| Password | `MyRemoverChangeMe123` |
+| User | `admin` |
+| Pass | `MyRemoverChangeMe123` |
 
-**Segera ganti password** lewat Users → Reset password (atau ubah env `ADMIN_PASSWORD` + clear disk/redeploy jika bootstrap sudah lewat).
-
----
-
-## Catatan free tier
-
-- Service **tidur** setelah ~15 menit idle → request pertama bisa lambat.  
-- Model AI ringan: `u2netp` (hemat RAM gratis).  
-- Disk ephemeral: database bisa hilang saat rebuild — user admin bootstrap dibuat ulang dari env.
+Ganti setelah login.
 
 ---
 
-## Checklist
+## Ringkas
 
-- [x] Code di GitHub (public)  
-- [ ] Deploy Blueprint Render (klik link di atas)  
-- [ ] Buka URL → login admin  
-- [ ] Users → add teman  
-- [ ] Ganti password admin  
+| Opsi | Kartu? | Biaya | Catatan |
+|------|--------|-------|---------|
+| Render Free | Biasanya **ya** (verifikasi) | $0 | Service tidur saat idle |
+| Replit Free | Biasanya **tidak** | $0 | Lebih cocok “tanpa kartu” |
+| HF Docker | PRO / bayar | tidak gratis | Ditolak sebelumnya |
