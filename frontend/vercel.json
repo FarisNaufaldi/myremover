@@ -4,10 +4,6 @@
   "framework": "vite",
   "rewrites": [
     {
-      "source": "/api/:path*",
-      "destination": "https://feynmanproject-myremover-api.hf.space/api/:path*"
-    },
-    {
       "source": "/(.*)",
       "destination": "/index.html"
     }

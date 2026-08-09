@@ -8,6 +8,7 @@ import { useSplashLifecycle } from "./lib/splash.js";
 import LoginPage from "./pages/LoginPage.jsx";
 import DashboardPage from "./pages/DashboardPage.jsx";
 import UsersPage from "./pages/UsersPage.jsx";
+import { BACKEND } from "./api/client.js";
 
 const THEME_STORAGE_KEY = "myremover-theme";
 
@@ -104,7 +105,9 @@ function AppShell({ theme, toggle }) {
             <Brand theme={theme} onToggleTheme={toggle} />
             <nav className="flex items-center gap-0.5">
               <NavItem to="/dashboard">Background Remover</NavItem>
-              {isAdmin && <NavItem to="/users">Users</NavItem>}
+              {isAdmin && BACKEND === "fastapi" && (
+                <NavItem to="/users">Users</NavItem>
+              )}
             </nav>
             <div className="ml-2 flex items-center gap-1.5">
               <span className="hidden items-center gap-2 rounded-full border border-white/[0.1] px-3 py-1.5 text-[12px] text-slate-300 sm:inline-flex">
@@ -146,14 +149,16 @@ function AppShell({ theme, toggle }) {
               </ProtectedRoute>
             }
           />
-          <Route
-            path="/users"
-            element={
-              <ProtectedRoute adminOnly>
-                <UsersPage />
-              </ProtectedRoute>
-            }
-          />
+          {BACKEND === "fastapi" && (
+            <Route
+              path="/users"
+              element={
+                <ProtectedRoute adminOnly>
+                  <UsersPage />
+                </ProtectedRoute>
+              }
+            />
+          )}
           <Route path="/" element={<Navigate to="/dashboard" replace />} />
           <Route path="*" element={<Navigate to="/dashboard" replace />} />
         </Routes>
@@ -161,7 +166,11 @@ function AppShell({ theme, toggle }) {
 
       <footer className="border-t border-white/[0.05] px-4 py-8 text-center text-xs text-slate-600 md:px-8">
         MyRemover · Private AI Background Remover ·{" "}
-        <span className="text-slate-500">FastAPI + React + Tailwind</span>
+        <span className="text-slate-500">
+          {BACKEND === "gradio"
+            ? "HF Gradio + Vercel"
+            : "FastAPI + React + Tailwind"}
+        </span>
       </footer>
     </div>
   );

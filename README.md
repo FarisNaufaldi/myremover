@@ -6,7 +6,11 @@ No public registration.
 Visual design follows the **anime-recommender-api** design system
 (Instrument Serif + Inter, liquid-glass panels, floating nav pill, mesh gradient backdrop, dark/light theme).
 
-**Public deploy GRATIS (tanpa HF PRO):** [DEPLOY_FREE.md](./DEPLOY_FREE.md) — Render Free, satu URL.
+**Public deploy GRATIS (tanpa HF PRO):**
+
+- [**HF Gradio + Vercel**](./DEPLOY_HF_VERCEL.md) — backend gratis di Hugging Face, UI di Vercel (Space free bisa **sleep**, auto-wake saat dibuka)
+- [Render Free all-in-one](./DEPLOY_FREE.md) — satu URL
+
 
 ---
 
