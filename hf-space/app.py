@@ -26,6 +26,21 @@ import gradio as gr
 from PIL import Image
 from rembg import new_session, remove
 
+# ZeroGPU free Spaces require at least one @spaces.GPU-decorated function at import time.
+try:
+    import spaces
+except ImportError:  # local / non-ZeroGPU
+
+    class _SpacesStub:
+        @staticmethod
+        def GPU(*_a, **_k):
+            def deco(fn):
+                return fn
+
+            return deco
+
+    spaces = _SpacesStub()  # type: ignore
+
 ACCESS_USERNAME = (os.getenv("ACCESS_USERNAME") or "admin").strip().lower()
 ACCESS_PASSWORD = os.getenv("ACCESS_PASSWORD") or "MyRemoverChangeMe123"
 SESSION_SECRET = os.getenv("SESSION_SECRET") or "hf-free-change-me-please-32chars!!"
@@ -128,8 +143,9 @@ def logout_fn(_token: str) -> str:
     return json.dumps({"logged_out": True})
 
 
+@spaces.GPU(duration=120)
 def remove_bg_fn(image_b64: str, token: str) -> str:
-    """Return raw base64 PNG (no data: prefix)."""
+    """Return raw base64 PNG (no data: prefix). Runs under ZeroGPU when available."""
     verify_token(token)
     img = _prepare_image(_decode_image_b64(image_b64))
     session = get_session()

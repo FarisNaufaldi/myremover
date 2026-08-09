@@ -13,8 +13,11 @@ short_description: Free private AI background remover API for Vercel frontend
 
 # MyRemover
 
-**Hardware wajib: CPU basic (Free)** — jangan ZeroGPU.
+Free path on personal accounts:
 
-ZeroGPU membutuhkan `@spaces.GPU` dan tidak cocok untuk rembg CPU.
-Kalau Space error: Settings → Space Hardware → **CPU basic** → Save / Restart.
+- Keep hardware **ZeroGPU** (free) — `remove_bg` uses `@spaces.GPU`
+- Switching ZeroGPU → CPU basic often **requires PRO**; cancel that dialog
+- Or: **Delete Space** + create new Gradio Space on **CPU basic** if you prefer CPU
 
+Secrets: `ACCESS_PASSWORD`, `SESSION_SECRET`  
+Variables: `ACCESS_USERNAME=admin`, `REMBG_MODEL=u2netp`
