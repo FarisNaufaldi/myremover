@@ -13,7 +13,8 @@ short_description: Free private AI background remover API for Vercel frontend
 
 # MyRemover
 
-Gradio 5 Space backend for Vercel frontend.
+**Hardware wajib: CPU basic (Free)** — jangan ZeroGPU.
 
-**Upload latest `app.py`** if you change code (login returns JSON *text*, not gr.JSON).
+ZeroGPU membutuhkan `@spaces.GPU` dan tidak cocok untuk rembg CPU.
+Kalau Space error: Settings → Space Hardware → **CPU basic** → Save / Restart.
 
