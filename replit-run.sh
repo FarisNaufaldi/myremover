@@ -15,9 +15,13 @@ export SESSION_SECRET="${SESSION_SECRET:-replit-dev-change-me-please-32chars}"
 export ADMIN_USERNAME="${ADMIN_USERNAME:-admin}"
 export ADMIN_PASSWORD="${ADMIN_PASSWORD:-MyRemoverChangeMe123}"
 export ADMIN_NAME="${ADMIN_NAME:-Admin}"
-export DATABASE_URL="${DATABASE_URL:-sqlite:///./data/app.db}"
-export UPLOAD_DIR="${UPLOAD_DIR:-./data/uploads}"
-export RESULT_DIR="${RESULT_DIR:-./data/results}"
+# Replit Agent often injects Postgres DATABASE_URL; free run uses local SQLite.
+# Set ALLOW_EXTERNAL_DATABASE=1 to keep whatever DATABASE_URL is already set.
+if [ "${ALLOW_EXTERNAL_DATABASE:-0}" != "1" ]; then
+  export DATABASE_URL="sqlite:////${PWD}/backend/data/app.db"
+fi
+export UPLOAD_DIR="${UPLOAD_DIR:-${PWD}/backend/data/uploads}"
+export RESULT_DIR="${RESULT_DIR:-${PWD}/backend/data/results}"
 
 # Replit: system site-packages is Nix (read-only). Use a project venv only.
 # Replit also sets PIP_USER=1 which breaks venvs — force it off.
