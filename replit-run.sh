@@ -54,6 +54,24 @@ if [ ! -f backend/static/index.html ]; then
   exit 1
 fi
 echo "Frontend OK: backend/static/index.html present"
+echo ""
+echo "=============================================="
+echo " JANGAN pakai Preview Replit (minta Core)."
+echo " Buka di Chrome/Safari Mac — copy URL di bawah:"
+echo "----------------------------------------------"
+if [ -n "${REPLIT_DEV_DOMAIN:-}" ]; then
+  echo "  https://${REPLIT_DEV_DOMAIN}"
+fi
+if [ -n "${REPLIT_DOMAINS:-}" ]; then
+  echo "  REPLIT_DOMAINS=${REPLIT_DOMAINS}"
+fi
+if [ -n "${REPL_SLUG:-}" ] && [ -n "${REPL_OWNER:-}" ]; then
+  echo "  https://${REPL_SLUG}.${REPL_OWNER}.repl.co"
+  echo "  https://${REPL_SLUG}-${REPL_OWNER}.replit.app"
+fi
+echo "  (internal check) curl http://127.0.0.1:${PORT:-8000}/api/ping"
+echo "=============================================="
+echo ""
 
 mkdir -p backend/data/uploads backend/data/results
 cd backend
