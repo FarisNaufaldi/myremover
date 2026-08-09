@@ -11,22 +11,9 @@ license: mit
 short_description: Free private AI background remover API for Vercel frontend
 ---
 
-# MyRemover (Hugging Face free backend)
+# MyRemover
 
-Gradio Space (free ZeroGPU / CPU basic — no Docker / no HF PRO).
+Gradio 5 Space backend for Vercel frontend.
 
-### Limits
+**Upload latest `app.py`** if you change code (login returns JSON *text*, not gr.JSON).
 
-- Free Spaces **sleep** after long idle. First visit wakes them.
-- Free always-on is not available; use paid hardware for that.
-
-### Secrets
-
-| Name | Example |
-|------|---------|
-| `ACCESS_PASSWORD` | strong password |
-| `SESSION_SECRET` | long random string |
-| `ACCESS_USERNAME` | `admin` (variable) |
-| `REMBG_MODEL` | `u2netp` (variable) |
-
-Frontend: Vercel with `VITE_BACKEND=gradio` and `VITE_HF_SPACE=https://….hf.space`

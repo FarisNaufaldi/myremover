@@ -1,17 +1,15 @@
 """
 MyRemover — free Hugging Face Gradio Space backend.
-
-Free personal HF accounts: up to 2 Gradio Spaces on ZeroGPU (no Docker / no PRO).
-Hardware "always on" is NOT free — free Spaces sleep after idle and wake on visit.
-
-Vercel frontend talks to this Space via @gradio/client.
+API returns plain strings (JSON text) to avoid Gradio 5 api_info bugs with dict schemas.
 """
 
 from __future__ import annotations
 
+import base64
 import hashlib
 import hmac
 import io
+import json
 import os
 import time
 from functools import lru_cache
@@ -26,6 +24,9 @@ SESSION_SECRET = os.getenv("SESSION_SECRET") or "hf-free-change-me-please-32char
 TOKEN_TTL = int(os.getenv("TOKEN_TTL_SECONDS") or "86400")
 REMBG_MODEL = os.getenv("REMBG_MODEL") or "u2netp"
 MAX_SIDE = int(os.getenv("MAX_IMAGE_SIDE") or "2048")
+
+# Disable Gradio 5 SSR on Spaces (avoids Node path + crashes for API clients)
+os.environ["GRADIO_SSR_MODE"] = "false"
 
 
 def _sign(payload: str) -> str:
@@ -63,32 +64,36 @@ def get_session():
     return new_session(REMBG_MODEL)
 
 
-def login_fn(username: str, password: str):
+def login_fn(username: str, password: str) -> str:
     u = (username or "").strip().lower()
     p = password or ""
     if u != ACCESS_USERNAME or p != ACCESS_PASSWORD:
         raise gr.Error("Invalid username or password.")
     token = issue_token(u)
-    return {
-        "ok": True,
-        "token": token,
-        "user": {"username": u, "role": "ADMIN", "name": "Admin"},
-    }
+    return json.dumps(
+        {
+            "ok": True,
+            "token": token,
+            "user": {"username": u, "role": "ADMIN", "name": "Admin"},
+        }
+    )
 
 
-def session_fn(token: str):
+def session_fn(token: str) -> str:
     try:
         user = verify_token(token)
-        return {
-            "authenticated": True,
-            "user": {"username": user, "role": "ADMIN", "name": "Admin"},
-        }
+        return json.dumps(
+            {
+                "authenticated": True,
+                "user": {"username": user, "role": "ADMIN", "name": "Admin"},
+            }
+        )
     except gr.Error:
-        return {"authenticated": False, "user": None}
+        return json.dumps({"authenticated": False, "user": None})
 
 
-def logout_fn(_token: str):
-    return {"logged_out": True}
+def logout_fn(_token: str) -> str:
+    return json.dumps({"logged_out": True})
 
 
 def _prepare_image(image: Image.Image) -> Image.Image:
@@ -97,29 +102,38 @@ def _prepare_image(image: Image.Image) -> Image.Image:
     longest = max(w, h)
     if longest > MAX_SIDE:
         scale = MAX_SIDE / float(longest)
-        img = img.resize((max(1, int(w * scale)), max(1, int(h * scale))), Image.Resampling.LANCZOS)
+        img = img.resize(
+            (max(1, int(w * scale)), max(1, int(h * scale))),
+            Image.Resampling.LANCZOS,
+        )
     return img
+
+
+def _to_pil(image) -> Image.Image:
+    if image is None:
+        raise gr.Error("Please upload an image.")
+    if isinstance(image, Image.Image):
+        return image
+    if isinstance(image, dict):
+        src = image.get("url") or image.get("path") or ""
+        if isinstance(src, str) and src.startswith("data:"):
+            _header, b64 = src.split(",", 1)
+            raw = base64.b64decode(b64)
+            return Image.open(io.BytesIO(raw))
+        if isinstance(src, str) and src:
+            import urllib.request
+
+            with urllib.request.urlopen(src) as resp:  # nosec B310
+                return Image.open(io.BytesIO(resp.read()))
+        raise gr.Error("Could not read uploaded image.")
+    if isinstance(image, (bytes, bytearray)):
+        return Image.open(io.BytesIO(image))
+    raise gr.Error("Unsupported image type.")
 
 
 def remove_bg_fn(image, token: str):
     verify_token(token)
-    if image is None:
-        raise gr.Error("Please upload an image.")
-    if isinstance(image, dict):
-        # Gradio FileData from API client
-        src = image.get("url") or image.get("path") or ""
-        if isinstance(src, str) and src.startswith("data:"):
-            header, b64 = src.split(",", 1)
-            raw = __import__("base64").b64decode(b64)
-            image = Image.open(io.BytesIO(raw))
-        elif isinstance(src, str) and src:
-            import urllib.request
-
-            with urllib.request.urlopen(src) as resp:  # nosec B310 — Space-controlled URL
-                image = Image.open(io.BytesIO(resp.read()))
-        else:
-            raise gr.Error("Could not read uploaded image.")
-    img = _prepare_image(image)
+    img = _prepare_image(_to_pil(image))
     session = get_session()
     out = remove(img, session=session)
     if not isinstance(out, Image.Image):
@@ -140,24 +154,37 @@ with gr.Blocks(title="MyRemover API") as demo:
             inp = gr.Image(type="pil", label="Input")
             out = gr.Image(type="pil", label="Output (transparent PNG)")
         btn = gr.Button("Remove background", variant="primary")
-        btn.click(remove_bg_fn, inputs=[inp, token_box], outputs=[out], api_name="remove_bg")
+        btn.click(
+            remove_bg_fn,
+            inputs=[inp, token_box],
+            outputs=[out],
+            api_name="remove_bg",
+        )
 
     with gr.Tab("Auth (API)"):
         u = gr.Textbox(label="Username")
         p = gr.Textbox(label="Password", type="password")
-        login_out = gr.JSON(label="Login result")
-        gr.Button("Login").click(login_fn, inputs=[u, p], outputs=[login_out], api_name="login")
+        login_out = gr.Textbox(label="Login result (JSON text)")
+        gr.Button("Login").click(
+            login_fn, inputs=[u, p], outputs=[login_out], api_name="login"
+        )
 
         t = gr.Textbox(label="Token")
-        sess_out = gr.JSON(label="Session")
-        gr.Button("Session").click(session_fn, inputs=[t], outputs=[sess_out], api_name="session")
-        gr.Button("Logout").click(logout_fn, inputs=[t], outputs=[sess_out], api_name="logout")
+        sess_out = gr.Textbox(label="Session / logout (JSON text)")
+        gr.Button("Session").click(
+            session_fn, inputs=[t], outputs=[sess_out], api_name="session"
+        )
+        gr.Button("Logout").click(
+            logout_fn, inputs=[t], outputs=[sess_out], api_name="logout"
+        )
 
+
+# Queue once; HF Spaces auto-launches `demo` if present.
+demo.queue(default_concurrency_limit=1)
 
 if __name__ == "__main__":
-    # HF Spaces injects PORT; Gradio 5 launches without explicit port if unset.
     port = int(os.getenv("PORT", "7860"))
-    demo.queue(default_concurrency_limit=1).launch(
+    demo.launch(
         server_name="0.0.0.0",
         server_port=port,
         show_error=True,

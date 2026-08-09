@@ -213,9 +213,10 @@ async function imageResultToPayload(out) {
 export const gradioApi = {
   mode: "gradio",
 
-  async login(username, password) {
+  async function login(username, password) {
     const data = await gradioCall("login", [username, password]);
-    const payload = data[0];
+    const raw = data[0];
+    const payload = typeof raw === "string" ? JSON.parse(raw) : raw;
     if (!payload?.token) throw new Error(payload?.error || "Login failed.");
     setStoredSession(payload.token, payload.user);
     return payload.user;
@@ -237,7 +238,8 @@ export const gradioApi = {
     if (!token) return { authenticated: false, user: null };
     try {
       const data = await gradioCall("session", [token]);
-      const payload = data[0];
+      const raw = data[0];
+      const payload = typeof raw === "string" ? JSON.parse(raw) : raw;
       if (!payload?.authenticated) {
         setStoredSession(null, null);
         return { authenticated: false, user: null };
