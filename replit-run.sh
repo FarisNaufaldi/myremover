@@ -41,11 +41,19 @@ source "${VENV_DIR}/bin/activate"
 python -m pip install --disable-pip-version-check -q --upgrade pip setuptools wheel
 python -m pip install --disable-pip-version-check -q -r backend/requirements.txt
 
-if [ ! -d backend/static/assets ]; then
+# Always ensure SPA is present (reset/clean can leave API without UI)
+if [ ! -f backend/static/index.html ] || [ ! -d backend/static/assets ]; then
+  echo "Building frontend into backend/static ..."
   (cd frontend && npm install && npm run build)
+  rm -rf backend/static
   mkdir -p backend/static
-  cp -r frontend/dist/* backend/static/
+  cp -r frontend/dist/. backend/static/
 fi
+if [ ! -f backend/static/index.html ]; then
+  echo "ERROR: backend/static/index.html missing after build" >&2
+  exit 1
+fi
+echo "Frontend OK: backend/static/index.html present"
 
 mkdir -p backend/data/uploads backend/data/results
 cd backend

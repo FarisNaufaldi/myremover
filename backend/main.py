@@ -155,5 +155,9 @@ else:
     def root():
         return ApiResponse(
             success=True,
-            data={"service": "MyRemover API", "docs": "/docs"},
+            data={
+                "service": "MyRemover API",
+                "docs": "/docs",
+                "hint": "Frontend not built. Run: cd frontend && npm run build && cp -r dist/* ../backend/static/",
+            },
         )
